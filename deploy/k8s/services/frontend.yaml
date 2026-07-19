@@ -1,0 +1,70 @@
+# frontend: Deployment + ClusterIP Service, static nginx serving the SPA.
+# No Mongo/Kafka, no secrets — just the built bundle, and the browser talks
+# to api-gateway directly (VITE_API_BASE_URL baked in at image build time).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend
+          image: ecommerce/frontend:0.1.0
+          imagePullPolicy: IfNotPresent # local image, loaded into the cluster
+          ports:
+            - name: http
+              containerPort: 8090
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          # stock nginx:alpine's master process wants root to bind/write its
+          # pidfile — unlike the JVM services, this one is NOT locked to
+          # runAsNonRoot. nginxinc/nginx-unprivileged is the documented
+          # evolution if/when this needs to match the other containers.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

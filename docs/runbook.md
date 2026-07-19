@@ -2,13 +2,14 @@
 
 Operating, debugging, and recovering the platform locally. Commands assume the
 repository root. `<svc>` is one of `order-service`, `inventory-service`,
-`payment-service`, `notification-service`.
+`payment-service`, `notification-service`, `auth-service`, `api-gateway`,
+or `frontend`.
 
 ## Health checks
 
 | Question | Compose | Kubernetes |
 |---|---|---|
-| Is everything up? | `make ps` (healthchecks) | `make k8s-status` (all 8 pods `1/1`) |
+| Is everything up? | `make ps` (healthchecks) | `make k8s-status` (all pods `1/1`) |
 | Is a service healthy? | `curl :808x/actuator/health` | readiness probe already gates traffic |
 | Does the whole saga work? | `make smoke` | `make k8s-smoke` (needs `make k8s-forward` running) |
 
@@ -46,9 +47,13 @@ docker logs <svc> 2>&1 | grep <correlation-id>
 kubectl -n ecommerce logs deploy/<svc> | grep <correlation-id>
 ```
 
-To see where an order stopped: `GET :8081/api/v1/orders/{id}` — the status
-(`CREATED/PAID/FAILED/CANCELLED`) plus `statusReason` tell you which saga leg
-failed; then grep the correlation ID in the implicated service.
+To see where an order stopped: `GET :8081/api/v1/orders/{id}` (internal) or
+`GET :8080/api/orders/{id}` with a bearer token (through the gateway, the way
+the storefront sees it) — the status (`CREATED/PAID/FAILED/CANCELLED`) plus
+`statusReason` tell you which saga leg failed; then grep the correlation ID
+in the implicated service. `api-gateway` and `auth-service` propagate
+`X-Correlation-Id` the same way as the four core services (same `common-web`
+filter), so a request's ID traces end to end from the browser in.
 
 ## Dead-letter queues
 
@@ -81,6 +86,8 @@ the original topic with `kafka-console-producer.sh`. Consumers are idempotent
 | Consumer lag rising | Check the consuming service's logs for retry storms; a poison pill will end up on the DLT — see above |
 | `saga_anomalies_total` > 0 | An event arrived in an unexpected order-state — grep the correlation ID; the state machine ignored it safely, but investigate why |
 | Smoke test fails only at the log-correlation step | Wrong log source for the environment — `make smoke` (docker) vs `make k8s-smoke` (kubectl) |
+| `401` calling the gateway with what looks like a valid token | Token expired (30 min TTL, no refresh — re-login) or auth-service restarted (its signing key is ephemeral, see ADR-0008) mid-token-lifetime |
+| `404` on an order you're sure exists | Expected if it's not yours — non-owner access returns 404, not 403, by design (ADR-0009); confirm you're logged in as the order's actual customer |
 
 ## Resetting state
 
