@@ -210,7 +210,9 @@ services:
       api-gateway:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8090/"]
+      # Alpine's musl resolver returns ::1 for "localhost" first, but nginx
+      # only binds 0.0.0.0 (IPv4) -- use 127.0.0.1 explicitly.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/"]
       interval: 15s
       timeout: 5s
       retries: 5
