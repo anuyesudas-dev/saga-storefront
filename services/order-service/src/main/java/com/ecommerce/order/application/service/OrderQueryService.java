@@ -17,8 +17,22 @@ public class OrderQueryService {
     }
 
     public Order getById(String orderId) {
-        return orders.findById(orderId)
+        return getById(orderId, null);
+    }
+
+    /**
+     * @param ownerId when non-null, restricts the lookup to orders owned by
+     *                this customer — a non-owner gets the same 404 as a
+     *                genuinely missing order, never a 403, so existence isn't
+     *                leaked to callers who don't own it.
+     */
+    public Order getById(String orderId, String ownerId) {
+        Order order = orders.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (ownerId != null && !ownerId.equals(order.getCustomerId())) {
+            throw new OrderNotFoundException(orderId);
+        }
+        return order;
     }
 
     public List<Order> list(String customerId) {

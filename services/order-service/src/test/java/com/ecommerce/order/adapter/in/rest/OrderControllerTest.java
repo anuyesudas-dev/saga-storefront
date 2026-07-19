@@ -23,7 +23,9 @@ import java.util.List;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -104,7 +106,7 @@ class OrderControllerTest {
 
     @Test
     void unknownOrderReturns404ProblemDetail() throws Exception {
-        when(queries.getById("ghost")).thenThrow(new OrderNotFoundException("ghost"));
+        when(queries.getById(eq("ghost"), isNull())).thenThrow(new OrderNotFoundException("ghost"));
 
         mvc.perform(get("/api/v1/orders/ghost"))
                 .andExpect(status().isNotFound())
@@ -113,12 +115,45 @@ class OrderControllerTest {
 
     @Test
     void cancellingPaidOrderReturns409ProblemDetail() throws Exception {
-        when(cancelOrder.handle(eq("order-1"), any())).thenThrow(
+        when(cancelOrder.handle(eq("order-1"), any(), isNull())).thenThrow(
                 new IllegalOrderStateException("order-1", OrderStatus.PAID, OrderStatus.CANCELLED));
 
         mvc.perform(post("/api/v1/orders/order-1/cancel"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Illegal order state transition"))
                 .andExpect(jsonPath("$.currentStatus").value("PAID"));
+    }
+
+    @Test
+    void xUserIdHeaderOverridesBodyCustomerIdOnCreate() throws Exception {
+        when(createOrder.handle(argThat(cmd -> "user-from-header".equals(cmd.customerId()))))
+                .thenReturn(sampleOrder());
+
+        mvc.perform(post("/api/v1/orders")
+                        .header("X-User-Id", "user-from-header")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerId":"attacker-supplied","currency":"USD",
+                                 "items":[{"productId":"p1","productName":"Keyboard",
+                                           "quantity":2,"unitPrice":89.99}]}
+                                """))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void xUserIdHeaderScopesGetToOwner() throws Exception {
+        when(queries.getById(eq("order-1"), eq("someone-else"))).thenThrow(new OrderNotFoundException("order-1"));
+
+        mvc.perform(get("/api/v1/orders/order-1").header("X-User-Id", "someone-else"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void xUserIdHeaderScopesCancelToOwner() throws Exception {
+        when(cancelOrder.handle(eq("order-1"), any(), eq("someone-else")))
+                .thenThrow(new OrderNotFoundException("order-1"));
+
+        mvc.perform(post("/api/v1/orders/order-1/cancel").header("X-User-Id", "someone-else"))
+                .andExpect(status().isNotFound());
     }
 }

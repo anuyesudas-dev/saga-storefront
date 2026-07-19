@@ -78,6 +78,17 @@ class CancelOrderUseCaseTest {
     }
 
     @Test
+    void nonOwnerGetsNotFoundNotForbiddenAndPublishesNothing() {
+        Order order = createdOrder();
+        when(orders.findById("order-1")).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> useCase().handle("order-1", "not mine", "someone-else"))
+                .isInstanceOf(OrderNotFoundException.class);
+        verify(orders, never()).save(any());
+        verify(outbox, never()).enqueue(any(), any(), any());
+    }
+
+    @Test
     void cancellingPaidOrderThrowsConflictAndPublishesNothing() {
         Order paid = createdOrder();
         paid.markInventoryReserved(NOW);

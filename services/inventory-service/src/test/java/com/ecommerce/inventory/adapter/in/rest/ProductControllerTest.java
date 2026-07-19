@@ -11,9 +11,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -28,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ProductControllerTest {
 
     private static final Instant NOW = Instant.parse("2026-07-18T10:00:00Z");
+    private static final BigDecimal PRICE = new BigDecimal("29.99");
 
     @Autowired
     private MockMvc mvc;
@@ -37,27 +40,28 @@ class ProductControllerTest {
 
     @Test
     void createReturns201WithLocationAndCorrelationHeader() throws Exception {
-        when(admin.create("p1", "Keyboard", 10)).thenReturn(
-                Product.create("p1", "Keyboard", 10, NOW));
+        when(admin.create("p1", "Keyboard", PRICE, 10)).thenReturn(
+                Product.create("p1", "Keyboard", PRICE, 10, NOW));
 
         mvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":\"p1\",\"name\":\"Keyboard\",\"initialStock\":10}"))
+                        .content("{\"productId\":\"p1\",\"name\":\"Keyboard\",\"price\":29.99,\"initialStock\":10}"))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("X-Correlation-Id", notNullValue()))
                 .andExpect(jsonPath("$.productId").value("p1"))
+                .andExpect(jsonPath("$.price").value(29.99))
                 .andExpect(jsonPath("$.availableQty").value(10))
                 .andExpect(jsonPath("$.reservedQty").value(0));
     }
 
     @Test
     void duplicateProductReturns409() throws Exception {
-        when(admin.create(anyString(), anyString(), anyInt()))
+        when(admin.create(anyString(), anyString(), any(), anyInt()))
                 .thenThrow(new ProductAlreadyExistsException("p1"));
 
         mvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":\"p1\",\"name\":\"Keyboard\",\"initialStock\":10}"))
+                        .content("{\"productId\":\"p1\",\"name\":\"Keyboard\",\"price\":29.99,\"initialStock\":10}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Product already exists"));
     }
@@ -66,7 +70,7 @@ class ProductControllerTest {
     void invalidSeedRequestReturns400WithFieldErrors() throws Exception {
         mvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productId\":\"\",\"name\":\"x\",\"initialStock\":-1}"))
+                        .content("{\"productId\":\"\",\"name\":\"x\",\"price\":9.99,\"initialStock\":-1}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation failed"))
                 .andExpect(jsonPath("$.errors.productId").exists())

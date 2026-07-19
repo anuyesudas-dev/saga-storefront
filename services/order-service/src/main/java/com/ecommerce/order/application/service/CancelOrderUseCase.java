@@ -37,8 +37,22 @@ public class CancelOrderUseCase {
 
     @Transactional
     public Order handle(String orderId, String reason) {
+        return handle(orderId, reason, null);
+    }
+
+    /**
+     * @param ownerId when non-null, only the owning customer may cancel;
+     *                anyone else gets the same 404 a missing order would -
+     *                enforcement already happened at the gateway, this is
+     *                defense against a forged/absent identity header.
+     */
+    @Transactional
+    public Order handle(String orderId, String reason, String ownerId) {
         Order order = orders.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+        if (ownerId != null && !ownerId.equals(order.getCustomerId())) {
+            throw new OrderNotFoundException(orderId);
+        }
 
         order.cancel(reason, clock.instant());
         orders.save(order);

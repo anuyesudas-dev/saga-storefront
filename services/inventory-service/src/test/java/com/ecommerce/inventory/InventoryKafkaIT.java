@@ -80,7 +80,7 @@ class InventoryKafkaIT {
 
     @Test
     void orderCreatedReservesStockAndPublishesEnrichedInventoryReserved() {
-        productPort.save(Product.create("p1", "Keyboard", 5, Instant.now()));
+        productPort.save(Product.create("p1", "Keyboard", new java.math.BigDecimal("19.99"), 5, Instant.now()));
         String orderId = "it-order-" + UUID.randomUUID();
 
         try (KafkaConsumer<String, String> consumer = consumerFor(Topics.INVENTORY_RESERVED)) {
