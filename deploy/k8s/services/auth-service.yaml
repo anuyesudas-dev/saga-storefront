@@ -1,0 +1,95 @@
+# auth-service: Deployment + ClusterIP Service. Same platform-config /
+# platform-secrets wiring rule as every other service; own database
+# (auth_db) on the shared mongodb StatefulSet (DB-per-service).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  labels:
+    app: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - name: http
+      port: 8085
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  labels:
+    app: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+        prometheus.io/path: /actuator/prometheus
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: auth-service
+          image: ecommerce/auth-service:0.1.0
+          imagePullPolicy: IfNotPresent # local image, loaded into the cluster
+          ports:
+            - name: http
+              containerPort: 8085
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: k8s
+            - name: JAVA_TOOL_OPTIONS
+              value: -XX:MaxRAMPercentage=75.0
+            - name: MONGODB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MONGODB_USERNAME
+            - name: MONGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MONGODB_PASSWORD
+            - name: MONGODB_URI
+              value: mongodb://$(MONGODB_USERNAME):$(MONGODB_PASSWORD)@mongodb-0.mongodb:27017/auth_db?directConnection=true&authSource=admin
+          startupProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36 # up to 3 minutes to start
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]

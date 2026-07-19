@@ -18,6 +18,8 @@ resources:
   - services/inventory-service.yaml
   - services/payment-service.yaml
   - services/notification-service.yaml
+  - services/auth-service.yaml
+  - services/api-gateway.yaml
   - monitoring/prometheus-rbac.yaml
   - monitoring/prometheus.yaml
   - monitoring/grafana.yaml
@@ -26,6 +28,7 @@ configMapGenerator:
   - name: platform-config
     literals:
       - KAFKA_BOOTSTRAP_SERVERS=kafka-0.kafka:9092
+      - GATEWAY_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8090
   - name: prometheus-config
     files:
       - prometheus/prometheus.yml
