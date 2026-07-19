@@ -29,7 +29,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <spring-boot.version>3.5.3</spring-boot.version>
+        <spring-boot.version>3.5.16</spring-boot.version>
         <spring-cloud.version>2025.0.2</spring-cloud.version>
         <springdoc.version>2.8.6</springdoc.version>
 
@@ -65,6 +65,41 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- Dependabot-flagged transitive versions that still trail the
+                 patched release even under the current Boot/Cloud BOMs -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>2.21.5</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.26.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.18.0</version>
+            </dependency>
+            <!-- org.lz4:lz4-java tops out at 1.8.1 under these coordinates (the
+                 project relocated to at.yawk.lz4, which kafka-clients hasn't
+                 adopted yet) — pins the one fixable half of the two open lz4
+                 CVEs; the other has no available fix under org.lz4 at all. -->
+            <dependency>
+                <groupId>org.lz4</groupId>
+                <artifactId>lz4-java</artifactId>
+                <version>1.8.1</version>
+            </dependency>
+            <!-- pulled in transitively (compile scope, api-gateway) by
+                 spring-boot-starter-oauth2-resource-server's JWT stack;
+                 1.80 falls in both an open critical and open medium CVE range -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>1.84</version>
             </dependency>
 
             <!-- internal modules -->
