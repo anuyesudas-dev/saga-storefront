@@ -127,7 +127,7 @@ class ConcurrentReservationIT {
 
     @Test
     void tenConcurrentOrdersForFiveUnitsNeverOversell() throws Exception {
-        productPort.save(Product.create("p1", "Keyboard", 5, Instant.now()));
+        productPort.save(Product.create("p1", "Keyboard", new java.math.BigDecimal("19.99"), 5, Instant.now()));
 
         int orders = 10;
         ExecutorService pool = Executors.newFixedThreadPool(orders);
@@ -154,7 +154,7 @@ class ConcurrentReservationIT {
 
     @Test
     void redeliveredOrderCreatedReservesOnlyOnce() {
-        productPort.save(Product.create("p1", "Keyboard", 3, Instant.now()));
+        productPort.save(Product.create("p1", "Keyboard", new java.math.BigDecimal("19.99"), 3, Instant.now()));
 
         reserveWithRedelivery(orderFor("order-dup", 2));
         reserveWithRedelivery(orderFor("order-dup", 2)); // duplicate delivery

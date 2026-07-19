@@ -21,7 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/products")
-@Tag(name = "Products", description = "Stock seeding and inspection (admin/demo API)")
+@Tag(name = "Products", description = "Stock seeding/replenishment (admin/demo API) and the public catalog listing")
 public class ProductController {
 
     private final ProductAdminService admin;
@@ -34,7 +34,7 @@ public class ProductController {
     @Operation(summary = "Create a product with initial stock")
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
         ProductResponse created = ProductResponse.from(
-                admin.create(request.productId(), request.name(), request.initialStock()));
+                admin.create(request.productId(), request.name(), request.price(), request.initialStock()));
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}").buildAndExpand(created.productId()).toUri();
         return ResponseEntity.created(location).body(created);

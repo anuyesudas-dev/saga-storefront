@@ -76,8 +76,8 @@ class ReserveInventoryUseCaseTest {
 
     @Test
     void reservesAllProductsAndPublishesInventoryReserved() {
-        Product p1 = Product.create("p1", "Keyboard", 10, NOW);
-        Product p2 = Product.create("p2", "Mouse", 5, NOW);
+        Product p1 = Product.create("p1", "Keyboard", new java.math.BigDecimal("19.99"), 10, NOW);
+        Product p2 = Product.create("p2", "Mouse", new java.math.BigDecimal("19.99"), 5, NOW);
         when(reservations.findByOrderId("order-1")).thenReturn(Optional.empty());
         when(products.findById("p1")).thenReturn(Optional.of(p1));
         when(products.findById("p2")).thenReturn(Optional.of(p2));
@@ -100,7 +100,7 @@ class ReserveInventoryUseCaseTest {
 
     @Test
     void insufficientStockPublishesFailureNamingEveryUnavailableProduct() {
-        Product p1 = Product.create("p1", "Keyboard", 1, NOW); // needs 2
+        Product p1 = Product.create("p1", "Keyboard", new java.math.BigDecimal("19.99"), 1, NOW); // needs 2
         when(reservations.findByOrderId("order-1")).thenReturn(Optional.empty());
         when(products.findById("p1")).thenReturn(Optional.of(p1));
         when(products.findById("p2")).thenReturn(Optional.empty()); // unknown product

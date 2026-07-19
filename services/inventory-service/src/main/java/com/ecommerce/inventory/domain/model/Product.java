@@ -6,6 +6,7 @@ import org.springframework.data.annotation.PersistenceCreator;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -22,6 +23,9 @@ public class Product {
     @Id
     private final String id;
     private final String name;
+    /** Catalog display/checkout price — lives with stock rather than a
+     * separate catalog-service, which would be overkill at this size. */
+    private final BigDecimal price;
     private int availableQty;
     /** Units held by ACTIVE reservations — not sellable, not yet permanently gone. */
     private int reservedQty;
@@ -30,22 +34,27 @@ public class Product {
     private Instant updatedAt;
 
     @PersistenceCreator
-    Product(String id, String name, int availableQty, int reservedQty, Long version, Instant updatedAt) {
+    Product(String id, String name, BigDecimal price, int availableQty, int reservedQty, Long version, Instant updatedAt) {
         this.id = id;
         this.name = name;
+        this.price = price;
         this.availableQty = availableQty;
         this.reservedQty = reservedQty;
         this.version = version;
         this.updatedAt = updatedAt;
     }
 
-    public static Product create(String id, String name, int initialStock, Instant now) {
+    public static Product create(String id, String name, BigDecimal price, int initialStock, Instant now) {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(name, "name");
+        Objects.requireNonNull(price, "price");
+        if (price.signum() < 0) {
+            throw new IllegalArgumentException("price must not be negative");
+        }
         if (initialStock < 0) {
             throw new IllegalArgumentException("initialStock must not be negative");
         }
-        return new Product(id, name, initialStock, 0, null, now);
+        return new Product(id, name, price, initialStock, 0, null, now);
     }
 
     /** Phase 1 of the two-phase reservation: move stock from available to held. */
@@ -105,6 +114,10 @@ public class Product {
 
     public String getName() {
         return name;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
     }
 
     public int getAvailableQty() {

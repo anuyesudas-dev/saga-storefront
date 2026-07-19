@@ -3,6 +3,7 @@ package com.ecommerce.inventory.domain.model;
 import com.ecommerce.inventory.domain.exception.InsufficientStockException;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11,10 +12,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ProductTest {
 
     private static final Instant NOW = Instant.parse("2026-07-18T10:00:00Z");
+    private static final BigDecimal PRICE = new BigDecimal("29.99");
 
     @Test
     void reserveMovesStockFromAvailableToHeld() {
-        Product product = Product.create("p1", "Keyboard", 10, NOW);
+        Product product = Product.create("p1", "Keyboard", PRICE, 10, NOW);
 
         product.reserve(3, NOW);
 
@@ -24,7 +26,7 @@ class ProductTest {
 
     @Test
     void cannotReserveMoreThanAvailable() {
-        Product product = Product.create("p1", "Keyboard", 2, NOW);
+        Product product = Product.create("p1", "Keyboard", PRICE, 2, NOW);
 
         assertThatThrownBy(() -> product.reserve(3, NOW))
                 .isInstanceOf(InsufficientStockException.class);
@@ -34,7 +36,7 @@ class ProductTest {
 
     @Test
     void confirmMakesDeductionPermanent() {
-        Product product = Product.create("p1", "Keyboard", 10, NOW);
+        Product product = Product.create("p1", "Keyboard", PRICE, 10, NOW);
         product.reserve(3, NOW);
 
         product.confirmReservation(3, NOW);
@@ -45,7 +47,7 @@ class ProductTest {
 
     @Test
     void releaseReturnsHeldStock() {
-        Product product = Product.create("p1", "Keyboard", 10, NOW);
+        Product product = Product.create("p1", "Keyboard", PRICE, 10, NOW);
         product.reserve(3, NOW);
 
         product.releaseReservation(3, NOW);
@@ -56,7 +58,7 @@ class ProductTest {
 
     @Test
     void cannotSettleMoreThanIsHeld() {
-        Product product = Product.create("p1", "Keyboard", 10, NOW);
+        Product product = Product.create("p1", "Keyboard", PRICE, 10, NOW);
         product.reserve(1, NOW);
 
         assertThatThrownBy(() -> product.confirmReservation(2, NOW))
@@ -67,7 +69,7 @@ class ProductTest {
 
     @Test
     void replenishAddsAvailableStock() {
-        Product product = Product.create("p1", "Keyboard", 1, NOW);
+        Product product = Product.create("p1", "Keyboard", PRICE, 1, NOW);
 
         product.replenish(5, NOW);
 

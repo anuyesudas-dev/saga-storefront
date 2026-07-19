@@ -46,7 +46,7 @@ class ReservationLifecycleHandlerTest {
     }
 
     private Product heldProduct() {
-        Product product = Product.create("p1", "Keyboard", 10, NOW);
+        Product product = Product.create("p1", "Keyboard", new java.math.BigDecimal("19.99"), 10, NOW);
         product.reserve(2, NOW);
         return product;
     }

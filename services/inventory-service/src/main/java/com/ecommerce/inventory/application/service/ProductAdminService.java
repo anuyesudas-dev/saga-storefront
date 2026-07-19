@@ -6,6 +6,7 @@ import com.ecommerce.inventory.domain.model.Product;
 import com.ecommerce.inventory.domain.port.ProductRepository;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.List;
 
@@ -24,11 +25,11 @@ public class ProductAdminService {
         this.clock = clock;
     }
 
-    public Product create(String productId, String name, int initialStock) {
+    public Product create(String productId, String name, BigDecimal price, int initialStock) {
         if (products.existsById(productId)) {
             throw new ProductAlreadyExistsException(productId);
         }
-        return products.save(Product.create(productId, name, initialStock, clock.instant()));
+        return products.save(Product.create(productId, name, price, initialStock, clock.instant()));
     }
 
     public Product replenish(String productId, int quantity) {
