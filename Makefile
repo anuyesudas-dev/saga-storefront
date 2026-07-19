@@ -1,6 +1,9 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: build up down restart ps logs clean smoke
+.PHONY: build up down restart ps logs clean smoke \
+        k8s-cluster
+
+KIND_CLUSTER := ecommerce
 
 build:            ## build all service jars (skips tests)
 	./mvnw -DskipTests package
@@ -28,3 +31,8 @@ smoke:            ## run the end-to-end saga smoke test against a running stack
 clean:            ## stop stack and delete data volumes
 	$(COMPOSE) down -v
 	./mvnw clean
+
+# ---------------------------------------------------------------- kubernetes
+
+k8s-cluster:      ## create the local kind cluster
+	kind create cluster --name $(KIND_CLUSTER) --wait 120s

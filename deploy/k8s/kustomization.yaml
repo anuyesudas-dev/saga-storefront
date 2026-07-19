@@ -1,0 +1,27 @@
+# Local-cluster deployment (kind). Apply with:
+#
+#   cp deploy/k8s/.secrets.env.example deploy/k8s/.secrets.env   # edit values
+#   kubectl apply -k deploy/k8s
+#
+# Secrets follow the platform rule: real values live in the gitignored
+# .secrets.env, generated into a Secret at apply time — never in a manifest.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ecommerce
+
+resources:
+  - namespace.yaml
+  - mongodb.yaml
+  - kafka.yaml
+
+secretGenerator:
+  - name: platform-secrets
+    envs:
+      - .secrets.env
+
+generatorOptions:
+  # stable names (no content-hash suffix): probes and initContainers reference
+  # them literally, and a local cluster doesn't need hash-driven rollouts —
+  # trade-off: config changes need a manual `kubectl rollout restart`
+  disableNameSuffixHash: true
