@@ -17,6 +17,7 @@
         <module>common/common-events</module>
         <module>common/common-web</module>
         <module>common/common-kafka</module>
+        <module>services/order-service</module>
     </modules>
 
     <properties>
