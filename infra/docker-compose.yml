@@ -199,6 +199,24 @@ services:
       start_period: 40s
     mem_limit: 512m
 
+  frontend:
+    build:
+      context: ../frontend
+    image: ecommerce/frontend:0.1.0
+    container_name: frontend
+    ports:
+      - "${FRONTEND_PORT:-8090}:8090"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    mem_limit: 128m
+
   prometheus:
     image: prom/prometheus:v3.4.1
     container_name: prometheus
