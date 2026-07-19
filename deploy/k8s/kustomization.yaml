@@ -18,11 +18,26 @@ resources:
   - services/inventory-service.yaml
   - services/payment-service.yaml
   - services/notification-service.yaml
+  - monitoring/prometheus-rbac.yaml
+  - monitoring/prometheus.yaml
+  - monitoring/grafana.yaml
 
 configMapGenerator:
   - name: platform-config
     literals:
       - KAFKA_BOOTSTRAP_SERVERS=kafka-0.kafka:9092
+  - name: prometheus-config
+    files:
+      - prometheus/prometheus.yml
+  - name: grafana-provisioning-datasources
+    files:
+      - grafana/provisioning/datasources/prometheus.yml
+  - name: grafana-provisioning-dashboards
+    files:
+      - grafana/provisioning/dashboards/dashboards.yml
+  - name: grafana-dashboards
+    files:
+      - grafana/dashboards/ecommerce-platform.json
 
 secretGenerator:
   - name: platform-secrets
