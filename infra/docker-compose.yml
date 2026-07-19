@@ -1,12 +1,12 @@
 name: ecommerce-platform
 
-# Full local stack: Kafka (KRaft), MongoDB (single-node replica set), the
-# four services, and Prometheus + Grafana for observability.
+# Full local stack: Kafka (KRaft), MongoDB (single-node replica set), and the
+# four services. Prometheus and Grafana join in the observability phases.
 #
 #   ./mvnw -DskipTests package                 # build the jars first
 #   docker compose -f infra/docker-compose.yml up -d --build
 #
-# Memory limits keep the whole stack inside a laptop budget.
+# Memory limits keep the whole stack inside a laptop budget (~3.5 GB).
 
 services:
   kafka:
@@ -147,6 +147,52 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8084/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    mem_limit: 512m
+
+  auth-service:
+    build:
+      context: ../services/auth-service
+    image: ecommerce/auth-service:0.1.0
+    container_name: auth-service
+    ports:
+      - "${AUTH_SERVICE_PORT:-8085}:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75.0"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8085/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    mem_limit: 512m
+
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+    image: ecommerce/api-gateway:0.1.0
+    container_name: api-gateway
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75.0"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
       interval: 15s
       timeout: 5s
       retries: 5

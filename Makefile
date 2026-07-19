@@ -1,10 +1,10 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: build up down restart ps logs clean smoke \
+.PHONY: build up down restart ps logs clean test smoke \
         k8s-cluster k8s-images k8s-apply k8s-status k8s-forward k8s-smoke k8s-sync-grafana k8s-down
 
 KIND_CLUSTER := ecommerce
-SERVICES     := order-service inventory-service payment-service notification-service
+SERVICES     := order-service inventory-service payment-service notification-service auth-service api-gateway
 
 build:            ## build all service jars (skips tests)
 	./mvnw -DskipTests package
@@ -24,7 +24,7 @@ ps:               ## show stack status + health
 	$(COMPOSE) ps
 
 logs:             ## follow logs of all services
-	$(COMPOSE) logs -f order-service inventory-service payment-service notification-service
+	$(COMPOSE) logs -f order-service inventory-service payment-service notification-service auth-service api-gateway
 
 smoke:            ## run the end-to-end saga smoke test against a running stack
 	./scripts/smoke-e2e.sh
@@ -48,11 +48,13 @@ k8s-apply:        ## deploy everything (needs deploy/k8s/.secrets.env — see .s
 k8s-status:       ## show pods + services in the ecommerce namespace
 	kubectl -n ecommerce get pods,svc
 
-k8s-forward:      ## port-forward all four services + prometheus + grafana (foreground)
+k8s-forward:      ## port-forward all services + prometheus + grafana (foreground)
 	kubectl -n ecommerce port-forward svc/order-service 8081:8081 & \
 	kubectl -n ecommerce port-forward svc/inventory-service 8082:8082 & \
 	kubectl -n ecommerce port-forward svc/payment-service 8083:8083 & \
 	kubectl -n ecommerce port-forward svc/notification-service 8084:8084 & \
+	kubectl -n ecommerce port-forward svc/auth-service 8085:8085 & \
+	kubectl -n ecommerce port-forward svc/api-gateway 8080:8080 & \
 	kubectl -n ecommerce port-forward svc/prometheus 9090:9090 & \
 	kubectl -n ecommerce port-forward svc/grafana 3000:3000 & \
 	wait
