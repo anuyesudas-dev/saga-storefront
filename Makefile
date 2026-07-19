@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f infra/docker-compose.yml
 
-.PHONY: build up down restart ps logs clean
+.PHONY: build up down restart ps logs clean smoke
 
 build:            ## build all service jars (skips tests)
 	./mvnw -DskipTests package
@@ -21,6 +21,9 @@ ps:               ## show stack status + health
 
 logs:             ## follow logs of all services
 	$(COMPOSE) logs -f order-service inventory-service payment-service notification-service
+
+smoke:            ## run the end-to-end saga smoke test against a running stack
+	./scripts/smoke-e2e.sh
 
 clean:            ## stop stack and delete data volumes
 	$(COMPOSE) down -v
