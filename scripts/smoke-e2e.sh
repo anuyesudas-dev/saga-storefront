@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # End-to-end saga smoke test against a running Docker Compose stack.
 # Exercises: happy path (PAID), deterministic payment failure (.99 rule) with
-# stock compensation, and insufficient-stock failure.
+# stock compensation, insufficient-stock failure, and the authenticated
+# gateway flow (register/login, JWT-forced customerId, public catalog,
+# 401 without a token, 404-not-403 for a non-owner's order).
 set -euo pipefail
 
 ORDER=http://localhost:8081
 INVENTORY=http://localhost:8082
 PAYMENT=http://localhost:8083
 NOTIFICATION=http://localhost:8084
+GATEWAY=${GATEWAY_URL:-http://localhost:8080}
 
 PRODUCT="smoke-p$RANDOM"
 CORR="smoke-$(date +%s)"
@@ -91,6 +94,45 @@ wait_status "$sid" FAILED
 pay_code=$(curl -s -o /dev/null -w '%{http_code}' "$PAYMENT/api/v1/payments?orderId=$sid")
 [ "$pay_code" = "404" ] || fail "payment should not exist for $sid (got HTTP $pay_code)"
 ok "order $sid FAILED at inventory, payment never attempted"
+
+say "authenticated flow: register/login through the gateway, order via JWT"
+EMAIL="smoke-$(date +%s)@example.com"
+register_and_login() { # email password -> token
+  curl -sf -X POST "$GATEWAY/api/auth/register" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$1\",\"password\":\"$2\",\"displayName\":\"Smoke User\"}" >/dev/null
+  curl -sf -X POST "$GATEWAY/api/auth/login" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$1\",\"password\":\"$2\"}" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])'
+}
+TOKEN=$(register_and_login "$EMAIL" "Sm0ke-Passw0rd")
+ok "registered and logged in as $EMAIL"
+
+catalog_code=$(curl -s -o /dev/null -w '%{http_code}' "$GATEWAY/api/catalog")
+[ "$catalog_code" = "200" ] || fail "GET /api/catalog without a token should be public, got HTTP $catalog_code"
+ok "catalog browsing needs no account"
+
+unauth_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/api/orders" \
+  -H 'Content-Type: application/json' -d '{}')
+[ "$unauth_code" = "401" ] || fail "POST /api/orders without a token should be 401, got HTTP $unauth_code"
+ok "creating an order without a token is rejected"
+
+AUTHED_ID=$(curl -sf -X POST "$GATEWAY/api/orders" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d "{\"customerId\":\"ignored-by-gateway\",\"currency\":\"USD\",\"items\":[
+        {\"productId\":\"$PRODUCT\",\"productName\":\"Smoke Widget\",
+         \"quantity\":1,\"unitPrice\":40.00}]}" \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["id"])')
+owner=$(curl -sf "$GATEWAY/api/orders/$AUTHED_ID" -H "Authorization: Bearer $TOKEN" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["customerId"])')
+[ "$owner" != "ignored-by-gateway" ] || fail "gateway did not override customerId from the JWT"
+ok "order $AUTHED_ID owned by the JWT subject, not the client-supplied customerId"
+
+OTHER_EMAIL="smoke-other-$(date +%s)@example.com"
+OTHER_TOKEN=$(register_and_login "$OTHER_EMAIL" "Sm0ke-Passw0rd-2")
+other_code=$(curl -s -o /dev/null -w '%{http_code}' "$GATEWAY/api/orders/$AUTHED_ID" \
+  -H "Authorization: Bearer $OTHER_TOKEN")
+[ "$other_code" = "404" ] || fail "a non-owner should get 404 (not 403) for someone else's order, got HTTP $other_code"
+ok "a different account gets 404, not 403, for an order it doesn't own"
 
 say "correlation id '$CORR' appears in every service's logs"
 # SMOKE_LOGS selects where logs live: docker (compose, default) or k8s

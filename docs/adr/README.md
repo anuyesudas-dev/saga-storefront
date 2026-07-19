@@ -12,3 +12,6 @@ New decisions get a new file; superseded decisions are marked, never deleted.
 | [0005](0005-envelope-versioning-tolerant-readers.md) | Envelope versioning + tolerant readers |
 | [0006](0006-blocking-retries-preserve-ordering.md) | Blocking consumer retries to preserve per-key ordering |
 | [0007](0007-scope-stop-at-kubernetes.md) | Stop at Kubernetes — defer OpenShift and load testing |
+| [0008](0008-custom-auth-service-over-keycloak.md) | Custom auth-service over Keycloak |
+| [0009](0009-edge-validation-trusted-header.md) | Edge JWT validation + trusted X-User-Id header |
+| [0010](0010-client-side-cart.md) | Client-side cart, no cart-service |

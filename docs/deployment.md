@@ -30,15 +30,18 @@ manifests:
 ```bash
 cp infra/.env.example infra/.env   # optional — defaults work
 make build     # jars (skips tests) + docker images
-make up        # kafka (KRaft), mongo (replica set), 4 services, prometheus, grafana
+make up        # kafka (KRaft), mongo (replica set), 6 services, frontend, prometheus, grafana
 make ps        # wait until all healthchecks are green
-make smoke     # 3-path saga smoke test + log correlation check
+make smoke     # 3-path saga smoke test + authenticated gateway flow + log correlation check
 make down      # stop; make clean also removes volumes
 ```
 
-Endpoints: services on 8081–8084 (`/swagger-ui.html`), Prometheus on 9090,
-Grafana on 3000. Mongo runs **without auth** here — a documented local-only
-trade-off; the Kubernetes deployment turns auth on.
+Endpoints: the four internal services on 8081–8084 (`/swagger-ui.html`) are
+reachable directly here for debugging, but the storefront only ever calls
+`api-gateway` on **8080** — that's the one thing a browser should hit.
+`auth-service` is on **8085**, the React storefront on **8090**, Prometheus
+on 9090, Grafana on 3000. Mongo runs **without auth** here — a documented
+local-only trade-off; the Kubernetes deployment turns auth on.
 
 ## Kubernetes (kind)
 
@@ -47,8 +50,8 @@ cp deploy/k8s/.secrets.env.example deploy/k8s/.secrets.env   # edit values
 make k8s-cluster    # kind create cluster --name ecommerce
 make k8s-images     # build images + kind load
 make k8s-apply      # kubectl apply -k deploy/k8s
-make k8s-status     # wait until all 8 pods are 1/1 Running
-make k8s-forward    # port-forwards 8081-8084, 9090, 3000 (foreground; Ctrl-C stops)
+make k8s-status     # wait until all pods are 1/1 Running
+make k8s-forward    # port-forwards 8081-8085, 8080 (gateway), 8090 (frontend), 9090, 3000 (foreground)
 make k8s-smoke      # smoke test through the forwards (SMOKE_LOGS=k8s → kubectl logs)
 make k8s-down       # delete the cluster
 ```

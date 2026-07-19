@@ -20,6 +20,7 @@ resources:
   - services/notification-service.yaml
   - services/auth-service.yaml
   - services/api-gateway.yaml
+  - services/frontend.yaml
   - monitoring/prometheus-rbac.yaml
   - monitoring/prometheus.yaml
   - monitoring/grafana.yaml

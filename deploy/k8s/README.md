@@ -1,7 +1,8 @@
 # Kubernetes deployment (local kind cluster)
 
 Runs the full platform — Kafka (KRaft), MongoDB (auth + single-member replica
-set), the four services, Prometheus, Grafana — on a local
+set), the four internal services, auth-service, api-gateway, the React
+frontend, Prometheus, Grafana — on a local
 [kind](https://kind.sigs.k8s.io/) cluster.
 
 ## Prerequisites
@@ -20,7 +21,7 @@ make k8s-images      # build jars + images, load into kind
 make k8s-apply       # kubectl apply -k deploy/k8s
 make k8s-status      # watch until all pods are Ready
 
-make k8s-forward     # port-forward 8081-8084, 9090 (Prometheus), 3000 (Grafana)
+make k8s-forward     # port-forward 8081-8085, 8080 (gateway), 8090 (frontend), 9090, 3000
 make k8s-smoke       # end-to-end saga smoke test through the forwards
 make k8s-down        # delete the cluster
 ```
@@ -45,3 +46,6 @@ make k8s-down        # delete the cluster
 - **Services**: startup probes absorb JVM boot; readiness/liveness hit the
   actuator endpoints; containers run non-root with dropped capabilities
   (which also preps the OpenShift restricted SCC in the next phase).
+- **frontend** is the one exception to non-root: stock `nginx:alpine`'s
+  master process wants root to bind/write its pidfile. `nginxinc/nginx-unprivileged`
+  is the documented evolution if it needs to match the other containers.
