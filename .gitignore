@@ -1,0 +1,29 @@
+# build
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+.settings/
+.project
+.classpath
+.factorypath
+
+# OS
+.DS_Store
+
+# local runtime junk
+*.log
+
+# environment-specific config — copy infra/.env.example to infra/.env
+.env
+# k8s secret material — copy deploy/k8s/.secrets.env.example to .secrets.env
+.secrets.env
+
+# claude code local settings
+.claude/settings.local.json
