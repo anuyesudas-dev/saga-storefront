@@ -16,6 +16,7 @@
     <modules>
         <module>common/common-events</module>
         <module>common/common-web</module>
+        <module>common/common-kafka</module>
     </modules>
 
     <properties>
@@ -59,6 +60,11 @@
             <dependency>
                 <groupId>com.ecommerce</groupId>
                 <artifactId>common-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ecommerce</groupId>
+                <artifactId>common-kafka</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
