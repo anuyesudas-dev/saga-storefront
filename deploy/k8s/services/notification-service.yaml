@@ -1,0 +1,106 @@
+# notification-service: Deployment + ClusterIP Service. Config follows the platform rule:
+# non-secret wiring from the platform-config ConfigMap, credentials from the
+# platform-secrets Secret — nothing environment-specific in the image.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  labels:
+    app: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - name: http
+      port: 8084
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  labels:
+    app: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+      annotations:
+        # picked up by Prometheus kubernetes_sd relabeling
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8084"
+        prometheus.io/path: /actuator/prometheus
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: notification-service
+          image: ecommerce/notification-service:0.1.0
+          imagePullPolicy: IfNotPresent # local image, loaded into the cluster
+          ports:
+            - name: http
+              containerPort: 8084
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: k8s
+            - name: JAVA_TOOL_OPTIONS
+              value: -XX:MaxRAMPercentage=75.0
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: platform-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: MONGODB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MONGODB_USERNAME
+            - name: MONGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: platform-secrets
+                  key: MONGODB_PASSWORD
+            # assembled from the two secret refs above ($() is kubelet-side
+            # interpolation) — the full URI never appears in any manifest
+            - name: MONGODB_URI
+              value: mongodb://$(MONGODB_USERNAME):$(MONGODB_PASSWORD)@mongodb-0.mongodb:27017/notification_db?directConnection=true&authSource=admin
+          # startup probe absorbs JVM boot time so liveness can stay tight
+          startupProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36 # up to 3 minutes to start
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            # numeric uid: runAsNonRoot cannot verify a named USER (spring),
+            # and an arbitrary uid also proves OpenShift-restricted compatibility
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
