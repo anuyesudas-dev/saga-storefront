@@ -15,6 +15,7 @@
     <!-- modules land here one at a time as each is introduced -->
     <modules>
         <module>common/common-events</module>
+        <module>common/common-web</module>
     </modules>
 
     <properties>
@@ -53,6 +54,11 @@
             <dependency>
                 <groupId>com.ecommerce</groupId>
                 <artifactId>common-events</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ecommerce</groupId>
+                <artifactId>common-web</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
