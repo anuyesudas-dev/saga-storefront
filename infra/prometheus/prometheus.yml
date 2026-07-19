@@ -1,0 +1,27 @@
+# Prometheus scrape configuration for the local Docker Compose stack.
+# Targets use compose-network DNS names; in Kubernetes this file is replaced
+# by pod annotation / ServiceMonitor discovery.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: ecommerce-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - order-service:8081
+          - inventory-service:8082
+          - payment-service:8083
+          - notification-service:8084
+    # keep instance labels readable: "order-service:8081" -> "order-service"
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: "([^:]+):.*"
+        target_label: instance
+        replacement: "$1"
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
