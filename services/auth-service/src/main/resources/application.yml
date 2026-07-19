@@ -1,0 +1,72 @@
+spring:
+  application:
+    name: auth-service
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/auth_db?directConnection=true
+      auto-index-creation: true
+
+server:
+  port: 8085
+
+auth:
+  token:
+    # short-lived by design; no refresh tokens (see docs/edge-design.md)
+    ttl: 30m
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  metrics:
+    tags:
+      # every metric carries the service name — lets one Grafana dashboard
+      # filter/split by service
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-}] %logger{36} - %msg%n"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  data:
+    mongodb:
+      uri: mongodb://mongodb:27017/auth_db?replicaSet=rs0
+
+logging:
+  pattern:
+    console:
+  structured:
+    format:
+      console: ecs
+
+---
+spring:
+  config:
+    activate:
+      on-profile: k8s
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+
+logging:
+  structured:
+    format:
+      console: ecs
